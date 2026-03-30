@@ -1,6 +1,3 @@
-image_repo := "mangas/mcpfile"
-tag := `echo ${TAG:-$(git rev-parse --abbrev-ref HEAD | tr '/' '-')}`
-
 default: help
 
 help:
@@ -38,17 +35,6 @@ test:
 # Run all tests including integration (requires Docker)
 test-all:
     cargo test -- --nocapture --include-ignored
-
-# Build Docker image
-docker-build newTag=tag:
-    docker build -t {{ image_repo }}:{{ newTag }} .
-
-# Push Docker image
-docker-push newTag=tag:
-    docker push {{ image_repo }}:{{ newTag }}
-
-# Build and push Docker image
-docker-build-push newTag=tag: (docker-build newTag) (docker-push newTag)
 
 # Install locally
 install:
