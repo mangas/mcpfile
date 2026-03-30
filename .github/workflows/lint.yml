@@ -8,7 +8,7 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - "justfile"
-      - ".github/workflows/lint.yml"
+      - ".github/**"
   pull_request:
     branches: [main]
     paths:
@@ -16,7 +16,7 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - "justfile"
-      - ".github/workflows/lint.yml"
+      - ".github/**"
 
 env:
   CARGO_TERM_COLOR: always
