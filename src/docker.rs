@@ -71,19 +71,20 @@ impl BollardClient {
 
 impl DockerClient for BollardClient {
     async fn create_container(&self, params: &CreateContainerParams) -> Result<String> {
-        use bollard::container::{Config as ContainerConfig, CreateContainerOptions};
+        use bollard::models::ContainerCreateBody;
         use bollard::models::{HostConfig, PortBinding};
+        use bollard::query_parameters::CreateContainerOptions;
 
         let mut port_bindings = HashMap::new();
-        let mut exposed_ports = HashMap::new();
+        let mut exposed_ports = Vec::new();
         for port in &params.exposed_ports {
             let key = format!("{port}/tcp");
-            exposed_ports.insert(key.clone(), HashMap::new());
+            exposed_ports.push(key.clone());
             port_bindings.insert(
                 key,
                 Some(vec![PortBinding {
                     host_ip: None,
-                    host_port: Some(String::new()), // ephemeral
+                    host_port: Some(String::new()),
                 }]),
             );
         }
@@ -98,7 +99,7 @@ impl DockerClient for BollardClient {
             ..Default::default()
         };
 
-        let config = ContainerConfig {
+        let body = ContainerCreateBody {
             image: Some(params.image.clone()),
             labels: Some(params.labels.clone()),
             env: Some(params.env.clone()),
@@ -106,11 +107,7 @@ impl DockerClient for BollardClient {
             attach_stdin: Some(params.stdin_open),
             attach_stdout: Some(true),
             attach_stderr: Some(true),
-            exposed_ports: if exposed_ports.is_empty() {
-                None
-            } else {
-                Some(exposed_ports)
-            },
+            exposed_ports: Some(exposed_ports),
             host_config: Some(host_config),
             cmd: if params.command.is_empty() {
                 None
@@ -121,17 +118,17 @@ impl DockerClient for BollardClient {
         };
 
         let opts = CreateContainerOptions {
-            name: params.name.clone(),
+            name: Some(params.name.clone()),
             ..Default::default()
         };
 
-        let resp = self.inner.create_container(Some(opts), config).await?;
+        let resp = self.inner.create_container(Some(opts), body).await?;
         Ok(resp.id)
     }
 
     async fn start_container(&self, id: &str) -> Result<()> {
         self.inner
-            .start_container::<&str>(id, None)
+            .start_container(id, None)
             .await
             .context("failed to start container")?;
         Ok(())
@@ -146,7 +143,7 @@ impl DockerClient for BollardClient {
     }
 
     async fn remove_container(&self, id: &str, force: bool) -> Result<()> {
-        use bollard::container::RemoveContainerOptions;
+        use bollard::query_parameters::RemoveContainerOptions;
         self.inner
             .remove_container(
                 id,
@@ -211,14 +208,14 @@ impl DockerClient for BollardClient {
     }
 
     async fn attach_container(&self, id: &str) -> Result<AttachStreams> {
-        use bollard::container::AttachContainerOptions;
+        use bollard::query_parameters::AttachContainerOptions;
         use futures_util::StreamExt;
 
-        let opts = AttachContainerOptions::<&str> {
-            stdin: Some(true),
-            stdout: Some(true),
-            stderr: Some(false),
-            stream: Some(true),
+        let opts = AttachContainerOptions {
+            stdin: true,
+            stdout: true,
+            stderr: false,
+            stream: true,
             ..Default::default()
         };
 
@@ -242,12 +239,12 @@ impl DockerClient for BollardClient {
     }
 
     async fn list_containers_by_label(&self, label: &str, value: &str) -> Result<Vec<ContainerInfo>> {
-        use bollard::container::ListContainersOptions;
+        use bollard::query_parameters::ListContainersOptions;
 
         let filter = format!("{label}={value}");
-        let opts = ListContainersOptions::<String> {
+        let opts = ListContainersOptions {
             all: true,
-            filters: HashMap::from([("label".to_string(), vec![filter])]),
+            filters: Some(HashMap::from([("label".to_string(), vec![filter])])),
             ..Default::default()
         };
 
@@ -261,7 +258,7 @@ impl DockerClient for BollardClient {
                 .and_then(|n| n.first())
                 .map(|n| n.trim_start_matches('/').to_string())
                 .unwrap_or_default();
-            let state = c.state.unwrap_or_default();
+            let state = c.state.map(|s| s.to_string()).unwrap_or_else(|| "unknown".into());
             let labels = c.labels.unwrap_or_default();
 
             let mut ports = Vec::new();
@@ -289,13 +286,13 @@ impl DockerClient for BollardClient {
     }
 
     async fn wait_container(&self, id: &str) -> Result<i64> {
-        use bollard::container::WaitContainerOptions;
+        use bollard::query_parameters::WaitContainerOptions;
         use futures_util::StreamExt;
 
         let mut stream = self.inner.wait_container(
             id,
             Some(WaitContainerOptions {
-                condition: "not-running",
+                condition: "not-running".to_string(),
             }),
         );
 
