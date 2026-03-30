@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  CARGO_TERM_COLOR: always
+  S3_BUCKET: mcpfile-releases
+  AWS_REGION: eu-west-3
+
+jobs:
+  build:
+    name: Build release binaries
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: arc-runner-set
+            asset_name: x86_64-linux
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            asset_name: aarch64-darwin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'arc-runner-set'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev
+
+      - name: Cache cargo registry
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v5
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Create archive
+        shell: bash
+        run: |
+          mkdir -p release
+          cp target/${{ matrix.target }}/release/mcpfile release/mcpfile-${{ matrix.asset_name }}
+          chmod +x release/mcpfile-${{ matrix.asset_name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: mcpfile-${{ matrix.asset_name }}
+          path: release/mcpfile-${{ matrix.asset_name }}
+
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: arc-runner-set
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: release-artifacts
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_RELEASE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          for artifact_dir in release-artifacts/*/; do
+            for file in "$artifact_dir"*; do
+              [ -f "$file" ] || continue
+              basename=$(basename "$file")
+              aws s3 cp "$file" "s3://${S3_BUCKET}/${VERSION}/${basename}"
+              aws s3 cp "$file" "s3://${S3_BUCKET}/latest/${basename}"
+            done
+          done
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "## What's Changed" > changelog.md
+          echo "" >> changelog.md
+          git log $(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")..HEAD --pretty=format:"- %s" >> changelog.md || echo "Initial release" >> changelog.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body_path: changelog.md
+          draft: false
+          prerelease: false
+          files: |
+            release-artifacts/*/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

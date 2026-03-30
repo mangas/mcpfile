@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/*.rs"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "**/*.rs"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/ci.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: arc-runner-set
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev
+
+      - name: Cache cargo registry
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/registry
+          key: linux-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/git
+          key: linux-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v5
+        with:
+          path: target
+          key: linux-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run tests
+        run: cargo test --lib --bins -- --nocapture
+
+      - name: Build
+        run: cargo build --release
