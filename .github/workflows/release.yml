@@ -1,12 +1,7 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag (e.g. v0.1.0). Leave empty to use latest release-please tag."
-        required: false
-        type: string
+  workflow_dispatch: {}
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,30 +9,37 @@ env:
   AWS_REGION: eu-west-3
 
 jobs:
-  resolve-tag:
-    name: Resolve release tag
+  release-please:
+    name: Release Please
     runs-on: arc-runner-set
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
-      version: ${{ steps.tag.outputs.version }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v6
 
-      - name: Resolve tag
-        id: tag
+      - id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          release-type: rust
+
+      - name: Summary
         run: |
-          if [ -n "${{ inputs.tag }}" ]; then
-            echo "version=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          if [ "${{ steps.release.outputs.release_created }}" = "true" ]; then
+            echo "### Release ${{ steps.release.outputs.tag_name }} created" >> $GITHUB_STEP_SUMMARY
+            echo "Building and publishing artifacts..." >> $GITHUB_STEP_SUMMARY
           else
-            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "### No release created" >> $GITHUB_STEP_SUMMARY
+            echo "A release PR was created or updated. Merge it and re-run this workflow." >> $GITHUB_STEP_SUMMARY
           fi
 
   build:
     name: Build ${{ matrix.asset_name }}
-    needs: resolve-tag
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -52,6 +54,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -68,13 +72,13 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-release-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo index
         uses: actions/cache@v5
         with:
           path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-release-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
@@ -94,12 +98,15 @@ jobs:
 
   docker:
     name: Build and push Docker image
-    needs: [resolve-tag, build]
+    needs: [release-please, build]
+    if: needs.release-please.outputs.release_created == 'true'
     runs-on: arc-runner-set
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
       - name: Download Linux binary
         uses: actions/download-artifact@v8
@@ -123,25 +130,20 @@ jobs:
           file: Dockerfile
           push: true
           tags: |
-            mangas/mcpfile:${{ needs.resolve-tag.outputs.version }}
+            mangas/mcpfile:${{ needs.release-please.outputs.tag_name }}
             mangas/mcpfile:latest
           build-args: |
             BINARY_PATH=docker-build/mcpfile-x86_64-linux
 
   publish:
-    name: Publish release
-    needs: [resolve-tag, build, docker]
+    name: Upload to S3
+    needs: [release-please, build]
+    if: needs.release-please.outputs.release_created == 'true'
     runs-on: arc-runner-set
     permissions:
-      contents: write
       id-token: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
@@ -155,7 +157,7 @@ jobs:
 
       - name: Upload to S3
         run: |
-          VERSION=${{ needs.resolve-tag.outputs.version }}
+          VERSION=${{ needs.release-please.outputs.tag_name }}
           for artifact_dir in release-artifacts/*/; do
             for file in "$artifact_dir"*; do
               [ -f "$file" ] || continue
@@ -165,32 +167,10 @@ jobs:
             done
           done
 
-      - name: Generate changelog
-        id: changelog
-        run: |
-          echo "## What's Changed" > changelog.md
-          echo "" >> changelog.md
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -n "$PREV_TAG" ]; then
-            git log ${PREV_TAG}..HEAD --pretty=format:"- %s" >> changelog.md
-          else
-            echo "Initial release" >> changelog.md
-          fi
-
-      - name: Create or update tag
-        run: |
-          VERSION=${{ needs.resolve-tag.outputs.version }}
-          git tag -f "$VERSION"
-          git push origin "$VERSION" --force
-
-      - name: Create GitHub Release
+      - name: Attach binaries to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.resolve-tag.outputs.version }}
-          name: Release ${{ needs.resolve-tag.outputs.version }}
-          body_path: changelog.md
-          draft: false
-          prerelease: false
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: |
             release-artifacts/*/*
         env:
