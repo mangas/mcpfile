@@ -23,8 +23,6 @@ jobs:
 
       - id: release
         uses: googleapis/release-please-action@v4
-        with:
-          release-type: rust
 
       - name: Summary
         run: |
