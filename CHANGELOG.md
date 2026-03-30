@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/mangas/mcpfile/compare/mcpfile-v0.2.0...mcpfile-v0.2.1) (2026-03-30)
+
+
+### Bug Fixes
+
+* add Default impl for MockDockerClient ([135c876](https://github.com/mangas/mcpfile/commit/135c8768bf485f0bf0f87f3625b43ea87a71e0bf))
+
 ## [0.2.0](https://github.com/mangas/mcpfile/compare/mcpfile-v0.1.0...mcpfile-v0.2.0) (2026-03-30)
 
 
