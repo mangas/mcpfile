@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/mangas/mcpfile/compare/mcpfile-v0.2.1...mcpfile-v0.2.2) (2026-03-30)
+
+
+### Bug Fixes
+
+* install aws CLI on self-hosted runner before S3 upload ([0e39f7e](https://github.com/mangas/mcpfile/commit/0e39f7e0990fdc2cb9c9cbbf9ae7cab7e32bc92e))
+* remove trailing blank lines in secrets.rs ([c08baad](https://github.com/mangas/mcpfile/commit/c08baadec083ccac706d146074d0afe7b990c901))
+
 ## [0.2.1](https://github.com/mangas/mcpfile/compare/mcpfile-v0.2.0...mcpfile-v0.2.1) (2026-03-30)
 
 
