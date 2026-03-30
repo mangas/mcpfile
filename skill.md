@@ -22,7 +22,6 @@ mcpfile up <service> --bridge        # stdio over Unix socket (detached, prints 
 mcpfile up <service> --refresh       # re-fetch secrets before starting
 mcpfile up <service> --force         # stop and recreate if already running
 mcpfile down <service>               # stop all instances of a service
-mcpfile pull-secrets                 # fetch and cache all secrets
 mcpfile install-skill                # install Claude Code skill to ~/.claude/skills/
 mcpfile completions fish             # generate shell completions (fish/bash/zsh)
 mcpfile -c <path> status             # use a custom config file

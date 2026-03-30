@@ -130,21 +130,6 @@ pub async fn resolve_secrets(
     Ok(resolved)
 }
 
-pub async fn pull_all_secrets(
-    aws: &impl AwsClient,
-    config: &Config,
-    cache_root: &Path,
-) -> Result<()> {
-    for (name, service) in &config.services {
-        if service.secrets.is_empty() {
-            continue;
-        }
-        eprintln!("Fetching secrets for {name}...");
-        resolve_secrets(aws, config, name, service, cache_root, true).await?;
-        eprintln!("  Cached {} secret(s)", service.secrets.len());
-    }
-    Ok(())
-}
 
 #[cfg(test)]
 pub mod mock {
@@ -343,47 +328,4 @@ mod tests {
         assert_eq!(calls[0].2, "/path/to/key"); // param
     }
 
-    #[tokio::test]
-    async fn pull_all_skips_services_without_secrets() {
-        let dir = tempfile::tempdir().unwrap();
-        let aws = MockAwsClient::new(vec![Ok("val".into())]);
-
-        let config = Config {
-            defaults: Defaults {
-                aws_region: "us-east-1".into(),
-                aws_profile: "dev".into(),
-            },
-            services: HashMap::from([
-                (
-                    "with_secrets".into(),
-                    ServiceConfig {
-                        image: "img:latest".into(),
-                        transport: Transport::Sse,
-                        container_port: Some(8080),
-                        env: HashMap::new(),
-                        secrets: HashMap::from([("KEY".into(), "/path".into())]),
-                        aws_profile: None,
-                        aws_region: None,
-                        command: Vec::new(),
-                    },
-                ),
-                (
-                    "no_secrets".into(),
-                    ServiceConfig {
-                        image: "img:latest".into(),
-                        transport: Transport::Sse,
-                        container_port: Some(8080),
-                        env: HashMap::new(),
-                        secrets: HashMap::new(),
-                        aws_profile: None,
-                        aws_region: None,
-                        command: Vec::new(),
-                    },
-                ),
-            ]),
-        };
-
-        pull_all_secrets(&aws, &config, dir.path()).await.unwrap();
-        assert_eq!(aws.calls().len(), 1);
-    }
 }

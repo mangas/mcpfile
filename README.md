@@ -60,7 +60,6 @@ mcpfile down tldv
 | `mcpfile up <service> --force` | Stop and recreate if already running. |
 | `mcpfile down <service>` | Stop all instances of a service. |
 | `mcpfile status` | Show all configured services with running state and endpoint. |
-| `mcpfile pull-secrets` | Fetch and cache all secrets. |
 | `mcpfile install-skill` | Install Claude Code skill to `~/.claude/skills/mcpfile/`. |
 | `mcpfile completions <shell>` | Generate shell completions. |
 

@@ -39,8 +39,6 @@ enum Commands {
     Down { service: String },
     /// Show status of all services
     Status,
-    /// Fetch and cache all secrets
-    PullSecrets,
     /// Install Claude Code skill to ~/.claude/skills/mcpfile/
     InstallSkill,
     /// Generate shell completions
@@ -176,10 +174,6 @@ async fn main() -> Result<()> {
         }
         Commands::Status => {
             docker::status(&docker, &cfg).await?;
-        }
-        Commands::PullSecrets => {
-            let cache = cache_root()?;
-            secrets::pull_all_secrets(&aws, &cfg, &cache).await?;
         }
         Commands::InstallSkill | Commands::Completions { .. } => unreachable!(),
     }
