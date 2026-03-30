@@ -130,7 +130,6 @@ pub async fn resolve_secrets(
     Ok(resolved)
 }
 
-
 #[cfg(test)]
 pub mod mock {
     use super::*;
@@ -327,5 +326,4 @@ mod tests {
         assert_eq!(calls[0].1, "us-east-1"); // region
         assert_eq!(calls[0].2, "/path/to/key"); // param
     }
-
 }
