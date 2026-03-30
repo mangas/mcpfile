@@ -11,7 +11,7 @@ env:
 jobs:
   release-please:
     name: Release Please
-    runs-on: arc-runner-set
+    runs-on: arc-runner-set-mcpfile
     permissions:
       contents: write
       pull-requests: write
@@ -46,7 +46,7 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
-            os: arc-runner-set
+            os: arc-runner-set-mcpfile
             asset_name: x86_64-linux
           - target: aarch64-apple-darwin
             os: macos-latest
@@ -64,7 +64,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Install system dependencies (Linux)
-        if: matrix.os == 'arc-runner-set'
+        if: matrix.os == 'arc-runner-set-mcpfile'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config musl-tools
@@ -101,7 +101,7 @@ jobs:
     name: Build and push Docker image
     needs: [release-please, build]
     if: needs.release-please.outputs.release_created == 'true'
-    runs-on: arc-runner-set
+    runs-on: arc-runner-set-mcpfile
 
     steps:
       - name: Checkout code
@@ -140,7 +140,7 @@ jobs:
     name: Upload to S3
     needs: [release-please, build]
     if: needs.release-please.outputs.release_created == 'true'
-    runs-on: arc-runner-set
+    runs-on: arc-runner-set-mcpfile
     permissions:
       id-token: write
 
