@@ -7,6 +7,7 @@ on:
       - "**/*.rs"
       - "Cargo.toml"
       - "Cargo.lock"
+      - "justfile"
       - ".github/workflows/lint.yml"
   pull_request:
     branches: [main]
@@ -14,6 +15,7 @@ on:
       - "**/*.rs"
       - "Cargo.toml"
       - "Cargo.lock"
+      - "justfile"
       - ".github/workflows/lint.yml"
 
 env:
@@ -22,6 +24,7 @@ env:
 jobs:
   fmt:
     name: Format
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: arc-runner-set
     steps:
       - name: Checkout code
@@ -32,11 +35,15 @@ jobs:
         with:
           components: rustfmt
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Check formatting
-        run: cargo fmt -- --check
+        run: just fmt
 
   clippy:
     name: Clippy
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: arc-runner-set
     steps:
       - name: Checkout code
@@ -46,6 +53,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+
+      - name: Install just
+        uses: extractions/setup-just@v2
 
       - name: Install system dependencies
         run: |
@@ -71,4 +81,4 @@ jobs:
           key: linux-clippy-build-target-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: just lint
