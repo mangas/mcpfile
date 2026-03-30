@@ -573,6 +573,12 @@ pub mod mock {
         wait_responses: RefCell<Vec<Result<i64>>>,
     }
 
+    impl Default for MockDockerClient {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl MockDockerClient {
         pub fn new() -> Self {
             Self {
