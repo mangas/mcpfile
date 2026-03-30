@@ -149,7 +149,7 @@ aws_profile = "prod"
         let toml_str = r#"
 [defaults]
 aws_region = "eu-west-3"
-aws_profile = "fa"
+aws_profile = "infra"
 
 [services.grafana]
 image = "mcp/grafana:latest"

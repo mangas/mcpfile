@@ -32,7 +32,7 @@ mcpfile -c <path> status             # use a custom config file
 ```toml
 [defaults]
 aws_region = "eu-west-3"
-aws_profile = "fa"
+aws_profile = "infra"
 
 [services.<name>]
 image = "mcp/server:latest"
