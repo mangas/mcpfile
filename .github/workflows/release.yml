@@ -45,7 +45,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
+          - target: x86_64-unknown-linux-musl
             os: arc-runner-set
             asset_name: x86_64-linux
           - target: aarch64-apple-darwin
@@ -67,7 +67,7 @@ jobs:
         if: matrix.os == 'arc-runner-set'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libssl-dev
+          sudo apt-get install -y build-essential pkg-config musl-tools
 
       - name: Cache cargo registry
         uses: actions/cache@v5

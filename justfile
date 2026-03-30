@@ -26,6 +26,11 @@ fmt-fix:
 build:
     cargo build --release
 
+# Build static Linux binary (musl)
+build-static:
+    rustup target add x86_64-unknown-linux-musl
+    cargo build --release --target x86_64-unknown-linux-musl
+
 # Run unit tests
 test:
     cargo test -- --nocapture
