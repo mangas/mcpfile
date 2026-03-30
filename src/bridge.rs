@@ -74,9 +74,15 @@ pub async fn run(
     env_vars: &HashMap<String, String>,
     secrets: &HashMap<String, String>,
 ) -> Result<()> {
-    let (id, streams) =
-        docker::spawn_docker_stdio(docker_client, container_name, service_name, service, env_vars, secrets)
-            .await?;
+    let (id, streams) = docker::spawn_docker_stdio(
+        docker_client,
+        container_name,
+        service_name,
+        service,
+        env_vars,
+        secrets,
+    )
+    .await?;
 
     let piped_io = PipedIo::bind(socket_path).await?;
     piped_io.run(streams.output, streams.input).await?;

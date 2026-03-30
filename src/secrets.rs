@@ -60,10 +60,7 @@ impl AwsClient for RealAwsClient {
             bail!("AWS credentials expired. Run: aws login --profile {profile}");
         }
 
-        bail!(
-            "failed to fetch secret {parameter_name}: {}",
-            stderr.trim()
-        );
+        bail!("failed to fetch secret {parameter_name}: {}", stderr.trim());
     }
 }
 

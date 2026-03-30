@@ -139,7 +139,16 @@ async fn main() -> Result<()> {
 
             // Internal: we are the bridge subprocess
             if let (Some(sock), Some(cname)) = (bridge_socket, bridge_name) {
-                return bridge::run(&docker, &service, &cname, &sock, svc, &svc.env, &resolved_secrets).await;
+                return bridge::run(
+                    &docker,
+                    &service,
+                    &cname,
+                    &sock,
+                    svc,
+                    &svc.env,
+                    &resolved_secrets,
+                )
+                .await;
             }
 
             if use_bridge {
@@ -152,10 +161,12 @@ async fn main() -> Result<()> {
             } else {
                 match svc.transport {
                     config::Transport::Sse => {
-                        docker::up_sse(&docker, &service, svc, &svc.env, &resolved_secrets, force).await?;
+                        docker::up_sse(&docker, &service, svc, &svc.env, &resolved_secrets, force)
+                            .await?;
                     }
                     config::Transport::Stdio => {
-                        docker::up_foreground(&docker, &service, svc, &svc.env, &resolved_secrets).await?;
+                        docker::up_foreground(&docker, &service, svc, &svc.env, &resolved_secrets)
+                            .await?;
                     }
                 }
             }

@@ -192,7 +192,6 @@ container_port = 8080
 "#;
         let config: Config = toml::from_str(toml_str).unwrap();
         assert!(config.service("nonexistent").is_err());
-
     }
 
     #[test]

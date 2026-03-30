@@ -49,7 +49,11 @@ pub trait DockerClient {
     async fn remove_container(&self, id: &str, force: bool) -> Result<()>;
     async fn inspect_container(&self, id: &str) -> Result<ContainerInfo>;
     async fn attach_container(&self, id: &str) -> Result<AttachStreams>;
-    async fn list_containers_by_label(&self, label: &str, value: &str) -> Result<Vec<ContainerInfo>>;
+    async fn list_containers_by_label(
+        &self,
+        label: &str,
+        value: &str,
+    ) -> Result<Vec<ContainerInfo>>;
     async fn wait_container(&self, id: &str) -> Result<i64>;
 }
 
@@ -171,7 +175,9 @@ impl DockerClient for BollardClient {
             .and_then(|s| s.status.as_ref())
             .map(|s| format!("{s:?}").to_lowercase())
             .unwrap_or_else(|| "unknown".into());
-        let labels = resp.config.as_ref()
+        let labels = resp
+            .config
+            .as_ref()
             .and_then(|c| c.labels.clone())
             .unwrap_or_default();
 
@@ -186,7 +192,9 @@ impl DockerClient for BollardClient {
                         .unwrap_or(0);
                     if let Some(Some(bindings)) = bindings.as_ref().map(Some) {
                         for b in bindings {
-                            if let Some(hp) = b.host_port.as_ref().and_then(|p| p.parse::<u16>().ok()) {
+                            if let Some(hp) =
+                                b.host_port.as_ref().and_then(|p| p.parse::<u16>().ok())
+                            {
                                 ports.push(PortMapping {
                                     container_port,
                                     host_port: hp,
@@ -238,7 +246,11 @@ impl DockerClient for BollardClient {
         })
     }
 
-    async fn list_containers_by_label(&self, label: &str, value: &str) -> Result<Vec<ContainerInfo>> {
+    async fn list_containers_by_label(
+        &self,
+        label: &str,
+        value: &str,
+    ) -> Result<Vec<ContainerInfo>> {
         use bollard::query_parameters::ListContainersOptions;
 
         let filter = format!("{label}={value}");
@@ -258,13 +270,17 @@ impl DockerClient for BollardClient {
                 .and_then(|n| n.first())
                 .map(|n| n.trim_start_matches('/').to_string())
                 .unwrap_or_default();
-            let state = c.state.map(|s| s.to_string()).unwrap_or_else(|| "unknown".into());
+            let state = c
+                .state
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "unknown".into());
             let labels = c.labels.unwrap_or_default();
 
             let mut ports = Vec::new();
             if let Some(port_list) = c.ports {
                 for p in port_list {
-                    if let (Some(priv_port), Some(pub_port)) = (Some(p.private_port), p.public_port) {
+                    if let (Some(priv_port), Some(pub_port)) = (Some(p.private_port), p.public_port)
+                    {
                         ports.push(PortMapping {
                             container_port: priv_port,
                             host_port: pub_port,
@@ -539,14 +555,14 @@ pub mod mock {
 
     #[derive(Debug, Clone)]
     pub enum DockerCall {
-        Create(String),    // container name
-        Start(String),     // id
-        Stop(String),      // id
-        Remove(String),    // id
-        Inspect(String),   // id
-        Attach(String),    // id
+        Create(String),       // container name
+        Start(String),        // id
+        Stop(String),         // id
+        Remove(String),       // id
+        Inspect(String),      // id
+        Attach(String),       // id
         List(String, String), // label, value
-        Wait(String),      // id
+        Wait(String),         // id
     }
 
     pub struct MockDockerClient {
@@ -611,30 +627,22 @@ pub mod mock {
         }
 
         async fn start_container(&self, id: &str) -> Result<()> {
-            self.calls
-                .borrow_mut()
-                .push(DockerCall::Start(id.into()));
+            self.calls.borrow_mut().push(DockerCall::Start(id.into()));
             Ok(())
         }
 
         async fn stop_container(&self, id: &str) -> Result<()> {
-            self.calls
-                .borrow_mut()
-                .push(DockerCall::Stop(id.into()));
+            self.calls.borrow_mut().push(DockerCall::Stop(id.into()));
             Ok(())
         }
 
         async fn remove_container(&self, id: &str, _force: bool) -> Result<()> {
-            self.calls
-                .borrow_mut()
-                .push(DockerCall::Remove(id.into()));
+            self.calls.borrow_mut().push(DockerCall::Remove(id.into()));
             Ok(())
         }
 
         async fn inspect_container(&self, id: &str) -> Result<ContainerInfo> {
-            self.calls
-                .borrow_mut()
-                .push(DockerCall::Inspect(id.into()));
+            self.calls.borrow_mut().push(DockerCall::Inspect(id.into()));
             let fallback = ContainerInfo {
                 id: id.into(),
                 name: String::new(),
@@ -646,9 +654,7 @@ pub mod mock {
         }
 
         async fn attach_container(&self, id: &str) -> Result<AttachStreams> {
-            self.calls
-                .borrow_mut()
-                .push(DockerCall::Attach(id.into()));
+            self.calls.borrow_mut().push(DockerCall::Attach(id.into()));
             let (r, w) = tokio::io::duplex(1024);
             Ok(AttachStreams {
                 output: Box::pin(r),
@@ -668,9 +674,7 @@ pub mod mock {
         }
 
         async fn wait_container(&self, id: &str) -> Result<i64> {
-            self.calls
-                .borrow_mut()
-                .push(DockerCall::Wait(id.into()));
+            self.calls.borrow_mut().push(DockerCall::Wait(id.into()));
             Self::pop(&self.wait_responses, 0)
         }
     }
@@ -698,8 +702,7 @@ mod tests {
     fn build_params_sse() {
         let svc = test_service(Transport::Sse);
         let secrets = HashMap::from([("SECRET".into(), "val".into())]);
-        let params =
-            build_container_params("mcpfile-grafana", "grafana", &svc, &svc.env, &secrets);
+        let params = build_container_params("mcpfile-grafana", "grafana", &svc, &svc.env, &secrets);
 
         assert_eq!(params.name, "mcpfile-grafana");
         assert_eq!(params.image, "test/image:latest");
@@ -723,7 +726,8 @@ mod tests {
             aws_region: None,
             command: vec!["cat".into()],
         };
-        let params = build_container_params("mcpfile-tldv-abc", "tldv", &svc, &svc.env, &HashMap::new());
+        let params =
+            build_container_params("mcpfile-tldv-abc", "tldv", &svc, &svc.env, &HashMap::new());
 
         assert!(params.stdin_open);
         assert!(params.exposed_ports.is_empty());
@@ -733,10 +737,7 @@ mod tests {
     #[test]
     fn build_params_env_sorted() {
         let svc = test_service(Transport::Sse);
-        let env = HashMap::from([
-            ("Z_VAR".into(), "z".into()),
-            ("A_VAR".into(), "a".into()),
-        ]);
+        let env = HashMap::from([("Z_VAR".into(), "z".into()), ("A_VAR".into(), "a".into())]);
         let params = build_container_params("test", "test", &svc, &env, &HashMap::new());
 
         let env_strs: Vec<&str> = params.env.iter().map(String::as_str).collect();
