@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/mangas/mcpfile/compare/mcpfile-v0.2.2...mcpfile-v0.2.3) (2026-04-06)
+
+
+### Bug Fixes
+
+* add contents:write permission for GitHub Release upload ([148d5ab](https://github.com/mangas/mcpfile/commit/148d5ab862ff2b87e7904d1790bd8a631284aded))
+
 ## [0.2.2](https://github.com/mangas/mcpfile/compare/mcpfile-v0.2.1...mcpfile-v0.2.2) (2026-03-30)
 
 
