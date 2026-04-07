@@ -118,6 +118,8 @@ jobs:
               aws s3 cp "$file" "s3://${S3_BUCKET}/latest/${basename}"
             done
           done
+          echo -n "$VERSION" > /tmp/VERSION
+          aws s3 cp /tmp/VERSION "s3://${S3_BUCKET}/latest/VERSION" --content-type text/plain
 
       - name: Attach binaries to GitHub Release
         uses: softprops/action-gh-release@v2
