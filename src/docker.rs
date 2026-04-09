@@ -67,9 +67,36 @@ pub struct BollardClient {
 
 impl BollardClient {
     pub fn new() -> Result<Self> {
-        let docker = bollard::Docker::connect_with_local_defaults()
-            .context("failed to connect to Docker daemon")?;
+        let docker = if std::env::var("DOCKER_HOST").is_err() {
+            Self::try_home_socket().unwrap_or_else(|| {
+                bollard::Docker::connect_with_local_defaults()
+                    .context("failed to connect to Docker daemon")
+            })
+        } else {
+            bollard::Docker::connect_with_local_defaults()
+                .context("failed to connect to Docker daemon")
+        }?;
         Ok(Self { inner: docker })
+    }
+
+    fn try_home_socket() -> Option<Result<bollard::Docker>> {
+        if !cfg!(target_os = "macos") {
+            return None;
+        }
+        // HOME is always set on macOS; no need for the `dirs` crate here.
+        let home = std::env::var("HOME").ok()?;
+        let sock = std::path::PathBuf::from(home).join(".docker/run/docker.sock");
+        if !sock.exists() {
+            return None;
+        }
+        Some(
+            bollard::Docker::connect_with_socket(
+                sock.to_str()?,
+                120,
+                bollard::API_DEFAULT_VERSION,
+            )
+            .context("failed to connect to Docker daemon via home socket"),
+        )
     }
 }
 
