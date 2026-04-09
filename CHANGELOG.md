@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/mangas/mcpfile/compare/mcpfile-v0.2.3...mcpfile-v0.3.0) (2026-04-09)
+
+
+### Features
+
+* write VERSION file to S3 latest/ on publish ([95bf3c0](https://github.com/mangas/mcpfile/commit/95bf3c0418225d40db4ba0dca9f07250ba7e866e))
+
+
+### Bug Fixes
+
+* resolve Docker Desktop socket and pull images before run ([#14](https://github.com/mangas/mcpfile/issues/14)) ([2b846a8](https://github.com/mangas/mcpfile/commit/2b846a8631abfb14350c46724b74d26bea523956))
+* resolve Docker Desktop socket on macOS ([#13](https://github.com/mangas/mcpfile/issues/13)) ([5464e0d](https://github.com/mangas/mcpfile/commit/5464e0db42168a3a946fdb15043845ef1b45f1d7))
+* resolve Docker Desktop socket on macOS and pull images before run ([2b846a8](https://github.com/mangas/mcpfile/commit/2b846a8631abfb14350c46724b74d26bea523956))
+
 ## [0.2.3](https://github.com/mangas/mcpfile/compare/mcpfile-v0.2.2...mcpfile-v0.2.3) (2026-04-06)
 
 
