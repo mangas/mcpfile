@@ -90,12 +90,8 @@ impl BollardClient {
             return None;
         }
         Some(
-            bollard::Docker::connect_with_socket(
-                sock.to_str()?,
-                120,
-                bollard::API_DEFAULT_VERSION,
-            )
-            .context("failed to connect to Docker daemon via home socket"),
+            bollard::Docker::connect_with_socket(sock.to_str()?, 120, bollard::API_DEFAULT_VERSION)
+                .context("failed to connect to Docker daemon via home socket"),
         )
     }
 }
@@ -104,7 +100,22 @@ impl DockerClient for BollardClient {
     async fn create_container(&self, params: &CreateContainerParams) -> Result<String> {
         use bollard::models::ContainerCreateBody;
         use bollard::models::{HostConfig, PortBinding};
-        use bollard::query_parameters::CreateContainerOptions;
+        use bollard::query_parameters::{CreateContainerOptions, CreateImageOptionsBuilder};
+        use futures_util::StreamExt;
+
+        // Pull image before creating container
+        let mut stream = self.inner.create_image(
+            Some(
+                CreateImageOptionsBuilder::default()
+                    .from_image(&params.image)
+                    .build(),
+            ),
+            None,
+            None,
+        );
+        while let Some(result) = stream.next().await {
+            result.context("failed to pull image")?;
+        }
 
         let mut port_bindings = HashMap::new();
         let mut exposed_ports = Vec::new();
