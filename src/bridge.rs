@@ -46,7 +46,7 @@ pub fn spawn(service_name: &str, config_path: Option<&Path>) -> Result<PathBuf> 
     let log = std::env::temp_dir().join(format!("mcpfile-{service_name}-{suffix}.log"));
     let log_file = std::fs::File::create(&log)?;
 
-    std::process::Command::new(exe)
+    let mut child = std::process::Command::new(exe)
         .args(&args)
         .stdin(Stdio::null())
         .stdout(log_file.try_clone()?)
@@ -54,14 +54,27 @@ pub fn spawn(service_name: &str, config_path: Option<&Path>) -> Result<PathBuf> 
         .spawn()
         .context("failed to spawn bridge process")?;
 
-    for _ in 0..50 {
+    // On a cold start the subprocess must fetch secrets (SSM) and create+start the
+    // container before it binds the socket, which routinely exceeds 5s. Wait up to
+    // 60s, but fail fast (surfacing the log) if the child exits before then.
+    for _ in 0..600 {
         if sock.exists() {
             return Ok(sock);
+        }
+        if let Some(status) = child.try_wait()? {
+            let details = std::fs::read_to_string(&log).unwrap_or_default();
+            bail!(
+                "bridge process exited ({status}) before the socket was ready:\n{}",
+                details.trim()
+            );
         }
         thread::sleep(Duration::from_millis(100));
     }
 
-    bail!("bridge failed to start — check {}", log.display())
+    bail!(
+        "bridge failed to start within 60s — check {}",
+        log.display()
+    )
 }
 
 /// Run the bridge: spawn docker container, bridge its stdio to a Unix socket.
