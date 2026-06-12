@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/mangas/mcpfile/compare/mcpfile-v0.3.0...mcpfile-v0.3.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* wait longer for bridge socket and fail fast on child exit ([#21](https://github.com/mangas/mcpfile/issues/21)) ([8ee9ef2](https://github.com/mangas/mcpfile/commit/8ee9ef270c9e214db7cd5519707454e1ef82c1f5))
+
 ## [0.3.0](https://github.com/mangas/mcpfile/compare/mcpfile-v0.2.3...mcpfile-v0.3.0) (2026-04-09)
 
 
