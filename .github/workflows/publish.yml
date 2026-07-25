@@ -122,7 +122,7 @@ jobs:
           aws s3 cp /tmp/VERSION "s3://${S3_BUCKET}/latest/VERSION" --content-type text/plain
 
       - name: Attach binaries to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.name }}
           files: |
