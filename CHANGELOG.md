@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/mangas/mcpfile/compare/mcpfile-v0.3.1...mcpfile-v0.3.2) (2026-07-25)
+
+
+### Bug Fixes
+
+* fall back to local image when pull fails ([#26](https://github.com/mangas/mcpfile/issues/26)) ([e06961f](https://github.com/mangas/mcpfile/commit/e06961fe40e949f806973d4e087b16dcbaebfe8b))
+
 ## [0.3.1](https://github.com/mangas/mcpfile/compare/mcpfile-v0.3.0...mcpfile-v0.3.1) (2026-06-12)
 
 
