@@ -94,27 +94,59 @@ impl BollardClient {
                 .context("failed to connect to Docker daemon via home socket"),
         )
     }
-}
 
-impl DockerClient for BollardClient {
-    async fn create_container(&self, params: &CreateContainerParams) -> Result<String> {
-        use bollard::models::ContainerCreateBody;
-        use bollard::models::{HostConfig, PortBinding};
-        use bollard::query_parameters::{CreateContainerOptions, CreateImageOptionsBuilder};
+    async fn pull_image(&self, image: &str) -> Result<()> {
+        use bollard::query_parameters::CreateImageOptionsBuilder;
         use futures_util::StreamExt;
 
-        // Pull image before creating container
         let mut stream = self.inner.create_image(
             Some(
                 CreateImageOptionsBuilder::default()
-                    .from_image(&params.image)
+                    .from_image(image)
                     .build(),
             ),
             None,
             None,
         );
         while let Some(result) = stream.next().await {
-            result.context("failed to pull image")?;
+            result?;
+        }
+        Ok(())
+    }
+}
+
+/// Decide how to recover from a failed image pull: either proceed with the
+/// locally present image (returning the warning to emit on stderr) or surface
+/// the original pull failure.
+fn local_image_fallback(
+    image: &str,
+    pull_err: anyhow::Error,
+    local_exists: bool,
+) -> Result<String> {
+    if !local_exists {
+        return Err(pull_err.context(format!(
+            "failed to pull image '{image}' and no local image found"
+        )));
+    }
+    Ok(format!(
+        "warning: failed to pull image '{image}', using local image: {pull_err:#}"
+    ))
+}
+
+impl DockerClient for BollardClient {
+    async fn create_container(&self, params: &CreateContainerParams) -> Result<String> {
+        use bollard::models::ContainerCreateBody;
+        use bollard::models::{HostConfig, PortBinding};
+        use bollard::query_parameters::CreateContainerOptions;
+
+        // Pull image before creating the container, falling back to a locally
+        // built image (which may not exist in any registry) if the pull fails.
+        if let Err(pull_err) = self.pull_image(&params.image).await {
+            let local_exists = self.inner.inspect_image(&params.image).await.is_ok();
+            eprintln!(
+                "{}",
+                local_image_fallback(&params.image, pull_err, local_exists)?
+            );
         }
 
         let mut port_bindings = HashMap::new();
@@ -788,6 +820,28 @@ mod tests {
         let a_pos = env_strs.iter().position(|e| *e == "A_VAR=a").unwrap();
         let z_pos = env_strs.iter().position(|e| *e == "Z_VAR=z").unwrap();
         assert!(a_pos < z_pos);
+    }
+
+    #[test]
+    fn local_image_fallback_warns_when_image_present() {
+        let err = anyhow::anyhow!("connection refused").context("pull stream failed");
+        let warning = local_image_fallback("local/only:dev", err, true).unwrap();
+
+        assert!(warning.starts_with("warning: failed to pull image 'local/only:dev'"));
+        // `{:#}` formatting keeps the root cause inline.
+        assert!(warning.contains("pull stream failed: connection refused"));
+    }
+
+    #[test]
+    fn local_image_fallback_fails_when_image_absent() {
+        let err = anyhow::anyhow!("connection refused");
+        let err = local_image_fallback("local/only:dev", err, false).unwrap_err();
+
+        assert_eq!(
+            err.to_string(),
+            "failed to pull image 'local/only:dev' and no local image found"
+        );
+        assert_eq!(err.root_cause().to_string(), "connection refused");
     }
 
     #[tokio::test]
