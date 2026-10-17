@@ -1,0 +1,43 @@
+# The former GitHub workflow lint.yml (jobs fmt and clippy), started at once,
+# on the stock rust image (current stable) with just from its GitHub release.
+when:
+  - event: manual
+  - event: pull_request
+    branch: main
+    path: &paths
+      - "**/*.rs"
+      - Cargo.toml
+      - Cargo.lock
+      - justfile
+      - ".woodpecker/**"
+  - event: push
+    branch: main
+    path: *paths
+
+variables:
+  - &rust_image docker.io/library/rust:1.99.0-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6
+  - &install_just |
+    curl -fsSL -o /tmp/just.tar.gz https://github.com/casey/just/releases/download/1.58.0/just-1.58.0-x86_64-unknown-linux-musl.tar.gz
+    echo "4a5cc2f53e6f0f8c59092a6cc38291eb729d46a7dd95d3ae582008881b84931d  /tmp/just.tar.gz" | sha256sum -c -
+    tar -xzf /tmp/just.tar.gz -C /usr/local/cargo/bin just
+
+steps:
+  - name: fmt
+    image: *rust_image
+    depends_on: []
+    environment:
+      CARGO_TERM_COLOR: always
+    commands:
+      - *install_just
+      - rustup component add rustfmt
+      - just fmt
+
+  - name: clippy
+    image: *rust_image
+    depends_on: []
+    environment:
+      CARGO_TERM_COLOR: always
+    commands:
+      - *install_just
+      - rustup component add clippy
+      - just lint
